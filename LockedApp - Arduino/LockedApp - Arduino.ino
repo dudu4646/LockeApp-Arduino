@@ -1,5 +1,5 @@
 /*
-19/10 17:20
+19/10 18:00
 DONE!!!
 */
 
@@ -222,6 +222,9 @@ void read_lock_status() {
 			state = NEW_LOCK;
 	}
 	else
+		if (WiFi.status()!= WL_CONNECTED)
+			state = HAVING_SSID_PASS;
+		else
 		state = NEW_LOCK;
 }
 
