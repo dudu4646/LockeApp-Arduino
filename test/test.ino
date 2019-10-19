@@ -1,7 +1,7 @@
 /*
-19/10 17:20
-DONE!!!
+15/10  09:55
 */
+
 
 #include <FirebaseESP8266.h>
 #include <FirebaseESP8266HTTPClient.h>
@@ -10,7 +10,6 @@ DONE!!!
 #include <ESP8266WiFi.h>
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
-#include <string.h>
 
 #define FIREBASE_HOST "https://lockedappproject.firebaseio.com/"
 #define FIREBASE_AUTH "a9VdU3AGQC9wzu7NYn4W44mQhQRvVSwisbqMR8Mq"
@@ -25,7 +24,7 @@ DONE!!!
 #define pass_ptr 121 
 #define id_ptr 141
 //Lock ID
-#define LID "101"
+#define LID "30"
 //State
 #define MISSING_SSID_PASS 0
 #define HAVING_SSID_PASS 1
@@ -34,6 +33,7 @@ DONE!!!
 #define NEW_LOCK 4
 #define BLUETOOTH_CONNECT 5
 
+
 FirebaseData FBdata;
 FirebaseJson snapshot;
 FirebaseJsonObject jsonParseResult;
@@ -41,17 +41,20 @@ SoftwareSerial bluetoothSerial(TxD, RxD);
 
 String path = "/locks/";
 String data;
-char ssid[21], pass[21], lockId[] = LID;
-char state = 0,t;
+char ssid[21], pass[21], lockId[6];
+char state = 0;
 char ch, pass_len, ssid_len;
 
+int temp = 0;
+
 void setup() {
-//	Serial.begin(9600);
+	Serial.begin(9600);
 	bluetoothSerial.begin(9600);
 	EEPROM.begin(512);
 
+
 	//reseting the EEPROM - LID, SSID and PASS 
-	reset(LID, "Dudu phone", "pass4646");
+//	reset(LID,"dudu","pass4646");
 
 	pinMode(blue, OUTPUT);
 	pinMode(green, OUTPUT);
@@ -59,85 +62,59 @@ void setup() {
 	turn_RGB(0, 0, 0);
 	path += LID;
 	path += "/status";
+	turn_RGB(1, 0, 0);
 	read_SSID_PASSWORD();
-	bluetoothSerial.flush();
-	t = 0;
-	
 }
-void loop() {	
-	if (bluetoothSerial.available() > 0) 
-		t = bluetoothSerial.read();
-	switch (state) {
-	case MISSING_SSID_PASS:
-		for (char t = 0; t < 3; t++) {
+void loop() {
+	turn_RGB(1, 1, 1);
+	if (bluetoothSerial.available() > 0) {
+		char t = bluetoothSerial.read();
+		char i;
+		if (t == '2') {
 			turn_RGB(1, 0, 0);
-			delay(300);
-			turn_RGB(0, 0, 0);
-			delay(300);
-		}
-		read_SSID_PASSWORD();
-		break;
-	case HAVING_SSID_PASS:
-		connect_to_WIFI_and_FB();
-		break;
-	case WIFI_CONNECT:
-		read_lock_status();
-		break;
-	case NEW_LOCK:
-		for (char i = 0; i < 2; i++) {
-			turn_RGB(1, 1, 1);
-			delay(300);
-			turn_RGB(0, 0, 0);
-			delay(300);
-		}
-		read_lock_status();
-		break;
-	}
-
-	switch (t) {
-	case 0:
-		if (bluetoothSerial.available() > 0) {
-			t = bluetoothSerial.read();
-			for (char tmp = 0; tmp < 3; tmp++) {
-				turn_RGB(0, 0, 1);
-				delay(300);
-				turn_RGB(0, 0, 0);
-				delay(300);
+			String str = LID;
+			bluetoothSerial.flush();
+			bluetoothSerial.write(str.length());
+			for (i = 0; i < str.length(); i++) {
+				bluetoothSerial.print(str[i]);
+				delay(15);
 			}
-			Serial.print("\n~~~~~~~~~~\nincoming = ");
-			Serial.print(t);
-			Serial.print("\n~~~~~~~~~~\n");
 		}
-		break;
-	case '1':
-		bluetoothSerial.write(4);
-		bluetoothSerial.write("SYNC");
-		t = 0;
-		break;
-	case '2':
-		bluetoothSerial.write(strlen(lockId));
-		for (char i = 0; i < strlen(lockId); i++) {
-			bluetoothSerial.print(lockId[i]);
-			delay(15);
+		if (t == '3') {
+			turn_RGB(0, 1, 0);
+			bluetoothSerial.flush();
+			bluetoothSerial.print(ssid_len);
+			for (i = 0; i < ssid_len; i++) {
+				bluetoothSerial.print(ssid[i]);
+				delay(15);
+			}
 		}
-		t = 0;
-		break;
-	case '3':
-		bluetoothSerial.write(ssid_len);
-		for (char i = 0; i < ssid_len; i++) {
-			bluetoothSerial.print(ssid[i]);
-			delay(15);
-		}
-		t = 0;
-		break;
-	case '4':
-		bluetoothSerial.write(1);
-		bluetoothSerial.write((WiFi.status() == WL_CONNECTED) ? '1' : '0');
-		delay(15);
-		t = 0;
-		break;
 	}
 
+	/*
+		if (WiFi.status() != WL_CONNECTED)
+			state = MISSING_SSID_PASS;
+		switch (state) {
+		case MISSING_SSID_PASS:
+			read_SSID_PASSWORD();
+			break;
+		case HAVING_SSID_PASS:
+			connect_to_WIFI_and_FB();
+			break;
+		case WIFI_CONNECT:
+			read_lock_status();
+			break;
+		case NEW_LOCK:
+			for (char i = 0; i < 3; i++) {
+				turn_RGB(1, 1, 1);
+				delay(500);
+				turn_RGB(0, 0, 0);
+				delay(500);
+			}
+			read_lock_status();
+			break;
+		}
+		*/
 }
 
 //connecting to WIFI and FIREBASE
@@ -146,17 +123,17 @@ void connect_to_WIFI_and_FB() {
 	//	Serial.print("connecting");
 	while (WiFi.status() != WL_CONNECTED) {
 		//		Serial.print(".");
-		turn_RGB(1, 1, 0);
-		delay(300);
-		turn_RGB(0, 1, 1);
-		delay(300);
-		turn_RGB(1, 0, 1);
-		delay(300);
+		turn_RGB(1, 0, 0);
+		delay(500);
+		turn_RGB(0, 0, 0);
+		delay(500);
 	}
+	//	Serial.println();
+	//	Serial.print("connected: ");
+	//	Serial.println(WiFi.localIP());
 	Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
 	Firebase.reconnectWiFi(true);
 	state = WIFI_CONNECT;
-	turn_RGB(0, 0, 0);
 }
 
 //read SSID and PASSWORD form EEPROM
@@ -179,13 +156,28 @@ void read_SSID_PASSWORD() {
 	pass[len] = '\0';
 	pass_len = len;
 
-	Serial.print("\n~~~~~~~~~~\n");
-	Serial.println(ssid);
-	Serial.println(pass);
-	Serial.println("~~~~~~~~~~~");
+	//	Serial.print("\n~~~~~~~~~~~~~\n");
+	//	Serial.print("ssid =");
+	//	Serial.print(ssid);
+	//	Serial.print(".\npass =");
+	//	Serial.print(pass);
+	//	Serial.print(".\n~~~~~~~~~~\n");
 
-	if ((ssid[0] != '\0' && pass[0] != '\0')) 
+	if ((ssid[0] != '\0' && pass[0] != '\0')) {
 		state = HAVING_SSID_PASS;
+		turn_RGB(0, 0, 0);
+	}
+	else {
+		turn_RGB(1, 1, 0);
+		delay(300);
+		turn_RGB(0, 1, 1);
+		delay(300);
+		turn_RGB(1, 0, 1);
+		delay(300);
+	}
+	//	Serial.print("\n~~~~~~~~~~~~\nin read ssid and pass:\nstate = ");
+	//	Serial.print(state, DEC);
+	//	Serial.print("\n~~~~~~~~\n");
 }
 
 //write SSID and PASSWORD to EEPROM
@@ -202,6 +194,9 @@ void write_SSID_PASSWORD(char s[20], char p[20]) {
 
 //write lock id to EEPROM
 void write_lock_id(char id[6]) {
+	//	Serial.print("\n!!!!!!!!\n");
+	//	Serial.println(id);
+	//	Serial.println("!!!!!!!!!");
 	char i;
 	for (i = 0; i < id[i] != '\0'; i++)
 		EEPROM.write(id_ptr + i, id[i]);
@@ -221,8 +216,6 @@ void read_lock_status() {
 		else
 			state = NEW_LOCK;
 	}
-	else
-		state = NEW_LOCK;
 }
 
 //turn leds on/off
