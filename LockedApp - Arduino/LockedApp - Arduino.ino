@@ -25,7 +25,7 @@ DONE!!!
 #define pass_ptr 121 
 #define id_ptr 141
 //Lock ID
-#define LID "101"
+#define LID "111"
 //State
 #define MISSING_SSID_PASS 0
 #define HAVING_SSID_PASS 1
