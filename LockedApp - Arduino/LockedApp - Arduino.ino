@@ -136,6 +136,13 @@ void loop() {
 		delay(15);
 		t = 0;
 		break;
+	case '5':
+		char ssidNum = WiFi.scanNetworks();
+		bluetoothSerial.write(ssidNum);
+		delay(10);
+		for (int i = 0; i < ssidNum; i++) {
+			bluetoothSerial.print(WiFi.SSID(i));
+		}
 	}
 
 }
