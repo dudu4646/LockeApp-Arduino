@@ -1,6 +1,5 @@
 /*
-21/10
-sending wifi done
+22/10
 */
 
 #include <FirebaseESP8266.h>
@@ -42,8 +41,9 @@ SoftwareSerial bluetoothSerial(TxD, RxD);
 String path = "/locks/";
 String data;
 char ssid[21], pass[21], lockId[] = LID;
+char t_ssid[21],t_pass[21];
 char state = 0, t;
-char ch, pass_len, ssid_len;
+char ch, pass_len, ssid_len,ptr, ssidNum;
 
 void setup() {
 	//	Serial.begin(9600);
@@ -51,7 +51,7 @@ void setup() {
 	EEPROM.begin(512);
 
 	//reseting the EEPROM - LID, SSID and PASS 
-//	reset(LID, "Dudu phone", "pass4646");
+	reset(LID, "Dudu phone", "pass4646");
 
 	pinMode(blue, OUTPUT);
 	pinMode(green, OUTPUT);
@@ -74,6 +74,7 @@ void loop() {
 		}
 		if(bluetoothSerial.available())
 			t = bluetoothSerial.read();
+		delay(15);
 		switch (t) {
 
 		case '1':
@@ -117,7 +118,7 @@ void loop() {
 			break;
 
 		case '5':
-			char ssidNum = WiFi.scanNetworks();
+			ssidNum = WiFi.scanNetworks();
 			bluetoothSerial.write(ssidNum);
 			delay(15);
 			for (char i = 0; i < ssidNum; i++) {
@@ -131,7 +132,43 @@ void loop() {
 				}
 			}
 			t = 0;
+			break;
+		case '6':
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.readBytes(t_ssid,20);
+			delay(15);
+	//		t_ssid[ptr] = '\0';
+			t = 0;
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			break;
+		case '7':
+			ptr = 0;
+			while(bluetoothSerial.available()>0)
+				t_pass[ptr++] = bluetoothSerial.read();
+			t_pass[ptr] = '\0';
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			write_SSID_PASSWORD(t_ssid, t_pass);
+			t = 0;
+			break;
 		}
+		
 	}
 	else {
 		switch (state) {
@@ -203,12 +240,7 @@ void read_SSID_PASSWORD() {
 	pass[len] = '\0';
 	pass_len = len;
 
-	Serial.print("\n~~~~~~~~~~\n");
-	Serial.println(ssid);
-	Serial.println(pass);
-	Serial.println("~~~~~~~~~~~");
-
-	if ((ssid[0] != '\0' && pass[0] != '\0'))
+	if (ssid[0] != '\0' )
 		state = HAVING_SSID_PASS;
 }
 
@@ -222,6 +254,7 @@ void write_SSID_PASSWORD(char s[20], char p[20]) {
 		EEPROM.write(pass_ptr + i, p[i]);
 	EEPROM.write(pass_ptr + i, p[i]);
 	EEPROM.commit();
+	state = HAVING_SSID_PASS;
 }
 
 //write lock id to EEPROM
