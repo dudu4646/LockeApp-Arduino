@@ -1,6 +1,6 @@
 /*
-19/10 18:00
-DONE!!!
+21/10
+sending wifi done
 */
 
 #include <FirebaseESP8266.h>
@@ -25,7 +25,7 @@ DONE!!!
 #define pass_ptr 121 
 #define id_ptr 141
 //Lock ID
-#define LID "111"
+#define LID "30"
 //State
 #define MISSING_SSID_PASS 0
 #define HAVING_SSID_PASS 1
@@ -42,16 +42,16 @@ SoftwareSerial bluetoothSerial(TxD, RxD);
 String path = "/locks/";
 String data;
 char ssid[21], pass[21], lockId[] = LID;
-char state = 0,t;
+char state = 0, t;
 char ch, pass_len, ssid_len;
 
 void setup() {
-//	Serial.begin(9600);
+	//	Serial.begin(9600);
 	bluetoothSerial.begin(9600);
 	EEPROM.begin(512);
 
 	//reseting the EEPROM - LID, SSID and PASS 
-	reset(LID, "Dudu phone", "pass4646");
+//	reset(LID, "Dudu phone", "pass4646");
 
 	pinMode(blue, OUTPUT);
 	pinMode(green, OUTPUT);
@@ -62,86 +62,103 @@ void setup() {
 	read_SSID_PASSWORD();
 	bluetoothSerial.flush();
 	t = 0;
-	
-}
-void loop() {	
-	if (bluetoothSerial.available() > 0) 
-		t = bluetoothSerial.read();
-	switch (state) {
-	case MISSING_SSID_PASS:
-		for (char t = 0; t < 3; t++) {
-			turn_RGB(1, 0, 0);
-			delay(300);
-			turn_RGB(0, 0, 0);
-			delay(300);
-		}
-		read_SSID_PASSWORD();
-		break;
-	case HAVING_SSID_PASS:
-		connect_to_WIFI_and_FB();
-		break;
-	case WIFI_CONNECT:
-		read_lock_status();
-		break;
-	case NEW_LOCK:
-		for (char i = 0; i < 2; i++) {
-			turn_RGB(1, 1, 1);
-			delay(300);
-			turn_RGB(0, 0, 0);
-			delay(300);
-		}
-		read_lock_status();
-		break;
-	}
 
-	switch (t) {
-	case 0:
-		if (bluetoothSerial.available() > 0) {
+}
+void loop() {
+	if (bluetoothSerial.available() > 0 || t!=0)
+	{
+		for (char tmp = 0; tmp < 2; tmp++) {
+			turn_RGB(0, 0, 1);
+			delay(300);
+			turn_RGB(0, 0, 0);
+		}
+		if(bluetoothSerial.available())
 			t = bluetoothSerial.read();
-			for (char tmp = 0; tmp < 3; tmp++) {
-				turn_RGB(0, 0, 1);
+		switch (t) {
+
+		case '1':
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(4);
+			delay(15);
+			bluetoothSerial.write("SYNC");
+			t = 0;
+			break;
+		case '2':
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(strlen(lockId));
+			delay(15);
+			for (char i = 0; i < strlen(lockId); i++) {
+				bluetoothSerial.write(lockId[i]);
+				delay(15);
+			}
+			t = 0;
+			break;
+		case '3':
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(ssid_len);
+			delay(15);
+			for (char i = 0; i < ssid_len; i++) {
+				bluetoothSerial.write(ssid[i]);
+				delay(15);
+			}
+			t = 0;
+			break;
+		case '4':
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write(1);
+			delay(15);
+			bluetoothSerial.write((WiFi.status() == WL_CONNECTED) ? '1' : '0');
+			delay(15);
+			t = 0;
+			break;
+
+		case '5':
+			char ssidNum = WiFi.scanNetworks();
+			bluetoothSerial.write(ssidNum);
+			delay(15);
+			for (char i = 0; i < ssidNum; i++) {
+				String str = WiFi.SSID(i).c_str();
+				delay(15);
+				bluetoothSerial.write(str.length());
+				delay(15);
+				for (char j = 0; j < str.length(); j++) {
+					bluetoothSerial.write(str[j]);
+					delay(15);
+				}
+			}
+			t = 0;
+		}
+	}
+	else {
+		switch (state) {
+		case MISSING_SSID_PASS:
+			for (char t = 0; t < 3; t++) {
+				turn_RGB(1, 0, 0);
 				delay(300);
 				turn_RGB(0, 0, 0);
 				delay(300);
 			}
-			Serial.print("\n~~~~~~~~~~\nincoming = ");
-			Serial.print(t);
-			Serial.print("\n~~~~~~~~~~\n");
-		}
-		break;
-	case '1':
-		bluetoothSerial.write(4);
-		bluetoothSerial.write("SYNC");
-		t = 0;
-		break;
-	case '2':
-		bluetoothSerial.write(strlen(lockId));
-		for (char i = 0; i < strlen(lockId); i++) {
-			bluetoothSerial.print(lockId[i]);
-			delay(15);
-		}
-		t = 0;
-		break;
-	case '3':
-		bluetoothSerial.write(ssid_len);
-		for (char i = 0; i < ssid_len; i++) {
-			bluetoothSerial.print(ssid[i]);
-			delay(15);
-		}
-		t = 0;
-		break;
-	case '4':
-		bluetoothSerial.write(1);
-		bluetoothSerial.write((WiFi.status() == WL_CONNECTED) ? '1' : '0');
-		delay(15);
-		t = 0;
-		break;
-	case '5':
-		char ssidNum = WiFi.scanNetworks();
-		bluetoothSerial.write(ssidNum);
-		delay(10);
-		for (int i = 0; i < ssidNum; i++) {
-			bluetoothSerial.print(WiFi.SSID(i));
+			read_SSID_PASSWORD();
+			break;
+		case HAVING_SSID_PASS:
+			connect_to_WIFI_and_FB();
+			break;
+		case WIFI_CONNECT:
+			read_lock_status();
+			break;
+		case NEW_LOCK:
+			for (char i = 0; i < 2; i++) {
+				turn_RGB(1, 1, 1);
+				delay(300);
+				turn_RGB(0, 0, 0);
+				delay(300);
+			}
+			read_lock_status();
+			break;
 		}
 	}
 
@@ -191,7 +208,7 @@ void read_SSID_PASSWORD() {
 	Serial.println(pass);
 	Serial.println("~~~~~~~~~~~");
 
-	if ((ssid[0] != '\0' && pass[0] != '\0')) 
+	if ((ssid[0] != '\0' && pass[0] != '\0'))
 		state = HAVING_SSID_PASS;
 }
 
@@ -229,10 +246,10 @@ void read_lock_status() {
 			state = NEW_LOCK;
 	}
 	else
-		if (WiFi.status()!= WL_CONNECTED)
+		if (WiFi.status() != WL_CONNECTED)
 			state = HAVING_SSID_PASS;
 		else
-		state = NEW_LOCK;
+			state = NEW_LOCK;
 }
 
 //turn leds on/off
