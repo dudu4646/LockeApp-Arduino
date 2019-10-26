@@ -1,5 +1,6 @@
 /*
-22/10
+23/10
+All Done!!!!
 */
 
 #include <FirebaseESP8266.h>
@@ -24,7 +25,7 @@
 #define pass_ptr 121 
 #define id_ptr 141
 //Lock ID
-#define LID "30"
+#define LID "6"
 //State
 #define MISSING_SSID_PASS 0
 #define HAVING_SSID_PASS 1
@@ -51,7 +52,7 @@ void setup() {
 	EEPROM.begin(512);
 
 	//reseting the EEPROM - LID, SSID and PASS 
-	reset(LID, "", "");
+	reset(LID, "Dudu phone", "pass4646");
 
 	pinMode(blue, OUTPUT);
 	pinMode(green, OUTPUT);
@@ -67,6 +68,7 @@ void setup() {
 void loop() {
 	if (bluetoothSerial.available() > 0 || t!=0)
 	{
+		
 		for (char tmp = 0; tmp < 2; tmp++) {
 			turn_RGB(0, 0, 1);
 			delay(300);
@@ -112,7 +114,7 @@ void loop() {
 			delay(15);
 			bluetoothSerial.write(1);
 			delay(15);
-			bluetoothSerial.write((WiFi.status() == WL_CONNECTED) ? '1' : '0');
+			bluetoothSerial.write(((WiFi.status() == WL_CONNECTED)&&(strlen(pass)>0)) ? '1' : '0');
 			delay(15);
 			t = 0;
 			break;
